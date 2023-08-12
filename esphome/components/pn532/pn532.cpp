@@ -132,10 +132,11 @@ void PN532::emit_ecp_frame() {
     PN532_COMMAND_INCOMMUNICATETHRU,
     0x6a, // ECP frame header
     0x02, // version
+    0xc8, // length
     0x01, 0x00, // type (transit)
     0x03, 0x00, 0x07, // clipper card
     0x00, 0x00, 0x00, 0x00, 0x00, // mystery data bytes
-    0x81, 0x4f // crc16a
+    0xd2, 0x88 // crc16a
   })) {
     ESP_LOGE(TAG, "Error sending incommunicate command");
     return;
