@@ -16,8 +16,10 @@ static const uint8_t PN532_COMMAND_VERSION_DATA = 0x02;
 static const uint8_t PN532_COMMAND_SAMCONFIGURATION = 0x14;
 static const uint8_t PN532_COMMAND_RFCONFIGURATION = 0x32;
 static const uint8_t PN532_COMMAND_INDATAEXCHANGE = 0x40;
+static const uint8_t PN532_COMMAND_INCOMMUNICATETHRU = 0x42;
 static const uint8_t PN532_COMMAND_INLISTPASSIVETARGET = 0x4A;
 static const uint8_t PN532_COMMAND_POWERDOWN = 0x16;
+static const uint8_t PN532_COMMAND_WRITEREGISTER = 0x08;
 
 class PN532BinarySensor;
 
@@ -54,6 +56,7 @@ class PN532 : public PollingComponent {
   bool write_command_(const std::vector<uint8_t> &data);
   bool read_ack_();
   void send_nack_();
+  void emit_ecp_frame();
 
   virtual bool write_data(const std::vector<uint8_t> &data) = 0;
   virtual bool read_data(std::vector<uint8_t> &data, uint8_t len) = 0;

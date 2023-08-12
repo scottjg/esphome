@@ -78,6 +78,20 @@ void PN532::setup() {
     return;
   }
 
+  // for sending Apple Wallet ECP frames to work, you can't send infinity
+  // activation attempts
+  if (!this->write_command_({
+    PN532_COMMAND_RFCONFIGURATION,
+    0x05, // MaxRetries config
+    0xff, // MxRtyATR wait time infinite (default)
+    0x01, // MxRtyPSL try twice (default)
+    0x00, // MxRtyPassiveActivation retry zero times
+  })) {
+    this->error_code_ = SAM_COMMAND_FAILED;
+    this->mark_failed();
+    return;
+  }
+
   this->turn_off_rf_();
 }
 
@@ -101,6 +115,43 @@ bool PN532::powerdown() {
   ESP_LOGV(TAG, "Powerdown successful");
   delay(1);
   return true;
+}
+
+void PN532::emit_ecp_frame() {
+  ESP_LOGD(TAG, "Emitting ECP frame");
+  if (!this->write_command_({
+    PN532_COMMAND_WRITEREGISTER,
+    0x63, 0x3D, // bit framing register
+    0x00 // zero means 8 bits in last byte
+  })) {
+    ESP_LOGE(TAG, "Error sending writeregister command");
+    return;
+  }
+
+  if (!this->write_command_({
+    PN532_COMMAND_INCOMMUNICATETHRU,
+    0x6a, // ECP frame header
+    0x02, // version
+    0x01, 0x00, // type (transit)
+    0x03, 0x00, 0x07, // clipper card
+    0x00, 0x00, 0x00, 0x00, 0x00, // mystery data bytes
+    0x81, 0x4f // crc16a
+  })) {
+    ESP_LOGE(TAG, "Error sending incommunicate command");
+    return;
+  }
+
+  std::vector<uint8_t> read;
+  bool success = this->read_response(PN532_COMMAND_INCOMMUNICATETHRU, read);
+  if (!success) {
+    ESP_LOGE(TAG, "Error reading response from incommunicate command");
+    return;
+  }
+
+  if (read.size() < 1 || read[0] != 0x00) {
+    ESP_LOGE(TAG, "Error response from incommunicate command: %02x", read[0]);
+    return;
+  }
 }
 
 void PN532::update() {
@@ -153,6 +204,7 @@ void PN532::loop() {
         trigger->process(tag);
     }
     this->current_uid_ = {};
+    this->emit_ecp_frame();
     this->turn_off_rf_();
     return;
   }
